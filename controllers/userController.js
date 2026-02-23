@@ -1,25 +1,33 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
+const ADMIN_EMAIL = "jurhee@gmail.com";
 
 // ------------------ CREATE USER ------------------
 exports.createUser = async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = email?.trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     return res
       .status(400)
       .json({ message: "Email болон password хоосон байж болохгүй" });
   }
 
   try {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({ email, password: hashedPassword });
+    const role =
+      normalizedEmail === ADMIN_EMAIL ? "admin" : req.body.role || "customer";
+    const user = new User({
+      email: normalizedEmail,
+      password: hashedPassword,
+      role,
+    });
     await user.save();
 
     res.status(201).json({ message: "User created successfully", user });
@@ -32,15 +40,16 @@ exports.createUser = async (req, res) => {
 // ------------------ LOGIN USER ------------------
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = email?.trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     return res
       .status(400)
       .json({ message: "Email болон password шаардлагатай" });
   }
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res
@@ -55,11 +64,17 @@ exports.loginUser = async (req, res) => {
         .json({ message: "Email эсвэл password буруу байна" });
     }
 
+    // Ensure the configured admin email always logs in as admin.
+    if (normalizedEmail === ADMIN_EMAIL && user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+    }
+
     // Амжилттай login
     res.status(200).json({
       message: "Амжилттай нэвтэрлээ",
       loggedIn: true,
-      user: { id: user._id, email: user.email },
+      user: { id: user._id, email: user.email, role: user.role || "customer" },
     });
   } catch (err) {
     console.error("Login error:", err);
