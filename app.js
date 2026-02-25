@@ -40,7 +40,11 @@ const allowedOriginPatterns = (process.env.CLIENT_URLS || "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const defaultLocalOrigins = ["http://localhost:3000", "http://localhost:3001"];
+const defaultLocalOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://*.vercel.app",
+];
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const wildcardToRegex = (pattern) =>
