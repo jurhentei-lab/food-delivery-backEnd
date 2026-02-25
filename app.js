@@ -33,11 +33,27 @@ const cors = require("cors");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 999;
+const allowedOrigins = (process.env.CLIENT_URLS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // CORS middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: (origin, callback) => {
+      // Allow server-to-server / curl requests without Origin header.
+      if (!origin) return callback(null, true);
+
+      const defaultLocalOrigins = ["http://localhost:3000", "http://localhost:3001"];
+      const whitelist = [...defaultLocalOrigins, ...allowedOrigins];
+
+      if (whitelist.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
