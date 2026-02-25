@@ -4,6 +4,7 @@ const connectToDB = require("./db");
 const Category = require("./models/category");
 const Food = require("./models/food");
 const User = require("./models/User");
+connectToDB.loadEnvFromFile?.();
 
 const seedData = {
   categories: ["Appetizers", "Salads", "Lunch Favorites", "Desserts"],
@@ -97,8 +98,10 @@ const seedData = {
 };
 
 const ensureAdminUser = async () => {
-  const email = "admin@nomnom.mn";
-  const plainPassword = "admin123";
+  const email = String(process.env.ADMIN_EMAIL || "admin@nomnom.mn")
+    .trim()
+    .toLowerCase();
+  const plainPassword = String(process.env.ADMIN_PASSWORD || "admin123");
 
   const existing = await User.findOne({ email });
   if (existing) {

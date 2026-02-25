@@ -31,6 +31,8 @@ const express = require("express");
 const connectToDB = require("./db");
 const cors = require("cors");
 
+connectToDB.loadEnvFromFile?.();
+
 const app = express();
 const PORT = Number(process.env.PORT) || 999;
 const allowedOrigins = (process.env.CLIENT_URLS || "")

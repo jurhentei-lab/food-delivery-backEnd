@@ -1,6 +1,12 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
-const ADMIN_EMAIL = "jurhee@gmail.com";
+const jwt = require("jsonwebtoken");
+const connectToDB = require("../db");
+
+connectToDB.loadEnvFromFile?.();
+
+const getAdminEmail = () =>
+  String(process.env.ADMIN_EMAIL || "jurhee@gmail.com").trim().toLowerCase();
 
 // ------------------ CREATE USER ------------------
 exports.createUser = async (req, res) => {
@@ -22,7 +28,7 @@ exports.createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const role =
-      normalizedEmail === ADMIN_EMAIL ? "admin" : req.body.role || "customer";
+      normalizedEmail === getAdminEmail() ? "admin" : req.body.role || "customer";
     const user = new User({
       email: normalizedEmail,
       password: hashedPassword,
@@ -65,15 +71,27 @@ exports.loginUser = async (req, res) => {
     }
 
     // Ensure the configured admin email always logs in as admin.
-    if (normalizedEmail === ADMIN_EMAIL && user.role !== "admin") {
+    if (normalizedEmail === getAdminEmail() && user.role !== "admin") {
       user.role = "admin";
       await user.save();
     }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return res.status(500).json({ message: "JWT_SECRET is not configured" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role || "customer" },
+      jwtSecret,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
 
     // Амжилттай login
     res.status(200).json({
       message: "Амжилттай нэвтэрлээ",
       loggedIn: true,
+      token,
       user: { id: user._id, email: user.email, role: user.role || "customer" },
     });
   } catch (err) {

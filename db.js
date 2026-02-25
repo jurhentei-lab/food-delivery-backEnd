@@ -2,9 +2,20 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
 
-const loadEnvFromFile = () => {
-  if (process.env.MONGOOSE_URI) return;
+const normalizeEnvValue = (rawValue) => {
+  const value = String(rawValue ?? "").trim();
+  const quoted =
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"));
 
+  if (quoted) {
+    return value.slice(1, -1);
+  }
+
+  return value;
+};
+
+const loadEnvFromFile = () => {
   const envPath = path.join(__dirname, ".env");
   if (!fs.existsSync(envPath)) return;
 
@@ -17,7 +28,7 @@ const loadEnvFromFile = () => {
     if (equalIndex === -1) continue;
 
     const key = line.slice(0, equalIndex).trim();
-    const value = line.slice(equalIndex + 1).trim();
+    const value = normalizeEnvValue(line.slice(equalIndex + 1));
 
     if (key && process.env[key] === undefined) {
       process.env[key] = value;
@@ -44,3 +55,4 @@ const connectToDB = async () => {
 };
 
 module.exports = connectToDB;
+module.exports.loadEnvFromFile = loadEnvFromFile;
