@@ -35,10 +35,24 @@ connectToDB.loadEnvFromFile?.();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 999;
-const allowedOrigins = (process.env.CLIENT_URLS || "")
+const allowedOriginPatterns = (process.env.CLIENT_URLS || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+const defaultLocalOrigins = ["http://localhost:3000", "http://localhost:3001"];
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const wildcardToRegex = (pattern) =>
+  new RegExp(`^${escapeRegex(pattern).replace(/\\\*/g, ".*")}$`);
+
+const compiledOriginRules = [...defaultLocalOrigins, ...allowedOriginPatterns].map((pattern) => ({
+  pattern,
+  regex: pattern.includes("*") ? wildcardToRegex(pattern) : null,
+}));
+
+const isOriginAllowed = (origin) =>
+  compiledOriginRules.some(({ pattern, regex }) => (regex ? regex.test(origin) : pattern === origin));
 
 // CORS middleware
 app.use(
@@ -47,10 +61,7 @@ app.use(
       // Allow server-to-server / curl requests without Origin header.
       if (!origin) return callback(null, true);
 
-      const defaultLocalOrigins = ["http://localhost:3000", "http://localhost:3001"];
-      const whitelist = [...defaultLocalOrigins, ...allowedOrigins];
-
-      if (whitelist.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
 
