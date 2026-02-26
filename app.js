@@ -58,22 +58,26 @@ const compiledOriginRules = [...defaultLocalOrigins, ...allowedOriginPatterns].m
 const isOriginAllowed = (origin) =>
   compiledOriginRules.some(({ pattern, regex }) => (regex ? regex.test(origin) : pattern === origin));
 
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow server-to-server / curl requests without Origin header.
+    if (!origin) return callback(null, true);
+
+    if (isOriginAllowed(origin)) {
+      return callback(null, true);
+    }
+
+    console.error(`CORS blocked for origin: ${origin}`);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
+
 // CORS middleware
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow server-to-server / curl requests without Origin header.
-      if (!origin) return callback(null, true);
-
-      if (isOriginAllowed(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  })
-);
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
@@ -99,3 +103,11 @@ const startServer = async () => {
 };
 
 startServer();
+
+app.use((err, _req, res, next) => {
+  if (err?.message?.startsWith("CORS blocked for origin:")) {
+    return res.status(403).json({ message: err.message });
+  }
+
+  return next(err);
+});
