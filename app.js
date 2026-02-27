@@ -41,8 +41,8 @@ const allowedOriginPatterns = (process.env.CLIENT_URLS || "")
   .filter(Boolean);
 
 const defaultLocalOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
+  "http://localhost:*",
+  "http://127.0.0.1:*",
   "https://*.vercel.app",
 ];
 
@@ -79,7 +79,13 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-app.use(express.json());
+app.use(express.json({ limit: process.env.REQUEST_BODY_LIMIT || "10mb" }));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: process.env.REQUEST_BODY_LIMIT || "10mb",
+  })
+);
 
 // Routes
 const userRoutes = require("./routes/userRoutes");
